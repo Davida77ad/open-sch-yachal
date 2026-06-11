@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Open School of Ministry - Ghana Registration</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f7fb;
+      color: #1f2937;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      line-height: 1.6;
+    }
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #2f80ed 0%, #56ccf2 100%);
+      color: white;
+      border-radius: 24px;
+      padding: 32px 28px;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      margin: 0 0 16px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.05;
+    }
+    .hero p {
+      margin: 0;
+      max-width: 760px;
+      font-size: 1rem;
+    }
+    .section {
+      background: white;
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+    .section h2 {
+      margin-top: 0;
+      font-size: 1.5rem;
+    }
+    .section p,
+    .section li {
+      margin: 0.85rem 0;
+      color: #4b5563;
+    }
+    .section ul {
+      padding-left: 20px;
+    }
+    .form-grid {
+      display: grid;
+      gap: 18px;
+    }
+    .form-grid label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid #d1d5db;
+      border-radius: 14px;
+      font: inherit;
+      background: #f9fafb;
+      color: #111827;
+    }
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+    .button-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+    button {
+      background: #2f80ed;
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 24px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      background: #1f6cd9;
+    }
+    .note {
+      border-left: 4px solid #2f80ed;
+      padding-left: 14px;
+      margin-top: 16px;
+      color: #344054;
+    }
+    @media (min-width: 720px) {
+      .form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .form-grid .full-width {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>Open School of Ministry - Ghana Registration</h1>
+      <p>Register to join the fifth edition of Open School of Ministry through the Ghana designated center at Yachal House, Ridge Accra.</p>
+    </section>
+
+    <section class="section">
+      <h2>About Open School of Ministry</h2>
+      <p>Our local church, Saints Community Church, runs Livingword Ministerial Academy (L.M.A) as an internal leadership training school for church leaders. Open School of Ministry is our broader open class for church members and non-church members.</p>
+      <p>The Open School of Ministry first held in July 2015, with three subsequent editions and the latest in July 2024. The fifth edition will hold from <strong>Monday, July 6th – Wednesday, July 8th, 2026</strong>, with arrival on <strong>Sunday, July 5th, 2026</strong>.</p>
+      <p>This registration page is only for the Ghana approved center at Yachal House, Ridge Accra. If you are outside Ghana, please visit <a href="https://osom.saintscommunity.net/" target="_blank" rel="noopener">https://osom.saintscommunity.net/</a> for other participation options.</p>
+      <p class="note"><strong>Ghana Center:</strong> Yachal House, Ridge Accra.</p>
+    </section>
+
+    <section class="section">
+      <h2>Fee Structure</h2>
+      <ul>
+        <li>Primary Venue in Nigeria (In-person): ₦10,000</li>
+        <li>Designated Center Virtual Attendance: $20</li>
+      </ul>
+      <p>Please note the Ghana registration here is for participants joining through the approved Ghana center at Yachal House, Ridge Accra.</p>
+    </section>
+
+    <section class="section">
+      <h2>Register Your Interest</h2>
+      <form action="#" method="post">
+        <div class="form-grid">
+          <div>
+            <label for="fullName">Full Name</label>
+            <input id="fullName" name="fullName" type="text" placeholder="John Doe" required />
+          </div>
+          <div>
+            <label for="email">Email Address</label>
+            <input id="email" name="email" type="email" placeholder="name@example.com" required />
+          </div>
+          <div>
+            <label for="phone">Phone Number</label>
+            <input id="phone" name="phone" type="tel" placeholder="+233 24 123 4567" required />
+          </div>
+          <div>
+            <label for="country">Country</label>
+            <input id="country" name="country" type="text" value="Ghana" required />
+          </div>
+          <div>
+            <label for="church">Church / Organization</label>
+            <input id="church" name="church" type="text" placeholder="Saints Community Church or other" />
+          </div>
+          <div>
+            <label for="attendanceType">Participation Type</label>
+            <select id="attendanceType" name="attendanceType" required>
+              <option value="ghana-center">Virtual via Ghana center (Accra)</option>
+            </select>
+          </div>
+          <div class="full-width">
+            <label for="arrivalNotes">Arrival / Special Notes</label>
+            <textarea id="arrivalNotes" name="arrivalNotes" placeholder="Let us know if you need arrival details, accommodation guidance, or have special needs."></textarea>
+          </div>
+          <div class="full-width">
+            <label for="questions">Questions or Comments</label>
+            <textarea id="questions" name="questions" placeholder="Type any questions about registration, fees, or the Ghana venue."></textarea>
+          </div>
+        </div>
+        <div class="button-row">
+          <button type="submit">Submit Registration</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</body>
+</html>

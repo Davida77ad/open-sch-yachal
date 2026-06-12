@@ -19,7 +19,13 @@ const RegistrationSchema = new mongoose.Schema(
     status: {
       type: String,
       required: true,
-      enum: ['awaiting-momo-payment', 'momo-paid', 'cash-pending', 'cash-paid'],
+      enum: [
+        'awaiting-momo-payment',
+        'momo-review-pending',
+        'momo-paid',
+        'cash-pending',
+        'cash-paid',
+      ],
     },
   },
   { timestamps: true }

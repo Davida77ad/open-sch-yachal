@@ -10,24 +10,18 @@ services:
         value: production
       - key: MONGODB_URI
         sync: false
+      - key: MONGODB_DB_NAME
+        value: open-school-yachal
       - key: PORT
         value: 10000
       - key: CLIENT_URL
         value: https://register.yachalhousegh.com,https://open-sch-yachal.pages.dev
       - key: ADMIN_TOKEN
         sync: false
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: 465
-      - key: SMTP_SECURE
-        value: true
-      - key: SMTP_USER
+      - key: RESEND_API_KEY
         sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: EMAIL_FROM
-        sync: false
+      - key: RESEND_FROM_EMAIL
+        value: noreply@yachalhousegh.com
       - key: REGISTRATION_NOTIFICATION_EMAILS
         value: maamekrakuezoom@gmail.com,blackbird77ad@gmail.com
 

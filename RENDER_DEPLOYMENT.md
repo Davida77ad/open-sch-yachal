@@ -19,18 +19,15 @@
    NODE_ENV=production
    PORT=10000
    MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>/<database>?retryWrites=true&w=majority
+   MONGODB_DB_NAME=open-school-yachal
    CLIENT_URL=https://register.yachalhousegh.com,https://open-sch-yachal.pages.dev
    ADMIN_TOKEN=<generate-a-long-random-token>
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=465
-   SMTP_SECURE=true
-   SMTP_USER=<gmail-address-used-to-send-notifications>
-   SMTP_PASS=<gmail-app-password>
-   EMAIL_FROM=<gmail-address-used-to-send-notifications>
+   RESEND_API_KEY=<resend-api-key>
+   RESEND_FROM_EMAIL=noreply@yachalhousegh.com
    REGISTRATION_NOTIFICATION_EMAILS=maamekrakuezoom@gmail.com,blackbird77ad@gmail.com
    ```
 
-   For Gmail, `SMTP_PASS` must be a Google App Password, not the normal account password. Enable 2-Step Verification on the sending account, create an App Password, and add it only in Render and the local ignored `backend/.env` file.
+   Add and verify `yachalhousegh.com` (or a sending subdomain) in Resend before using that sender address. Create the API key in Resend and store it only in Render and the local ignored `backend/.env` file.
 
 4. **Deploy**
    - Click "Create Web Service"
@@ -45,10 +42,10 @@
    - **Publish Directory:** `client/dist`
 
 2. **Update API Base URL**
-   - After backend deploys, copy its URL (e.g., `https://open-sch-yachal-backend.onrender.com`)
+   - The current production API is `https://open-sch-yachal.onrender.com`.
    - Update `client/.env.production` with:
      ```
-     VITE_API_BASE=https://open-sch-yachal-backend.onrender.com
+     VITE_API_BASE=https://open-sch-yachal.onrender.com
      ```
 
 3. **Deploy Frontend**

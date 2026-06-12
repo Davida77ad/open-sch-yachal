@@ -191,16 +191,21 @@ async function findAllNewestFirst() {
   return sortNewestFirst(registrations);
 }
 
-async function confirmMomoPayment({ email, momoReference, momoTransactionId }) {
+async function submitMomoPayment({ email, momoReference, momoTransactionId }) {
   const mode = getStoreMode();
   if (mode === 'mongo') {
     const registration = await Registration.findOne({ email, momoReference });
     if (!registration) {
       return null;
     }
+    if (registration.status === 'momo-paid') {
+      const error = new Error('This payment has already been confirmed by an admin.');
+      error.statusCode = 409;
+      throw error;
+    }
 
     registration.momoTransactionId = momoTransactionId.trim();
-    registration.status = 'momo-paid';
+    registration.status = 'momo-review-pending';
     await registration.save();
     await mirrorRegistrationLocally(registration);
     return registration;
@@ -214,11 +219,71 @@ async function confirmMomoPayment({ email, momoReference, momoTransactionId }) {
   if (index === -1) {
     return null;
   }
+  if (registrations[index].status === 'momo-paid') {
+    const error = new Error('This payment has already been confirmed by an admin.');
+    error.statusCode = 409;
+    throw error;
+  }
 
   registrations[index] = {
     ...registrations[index],
     momoTransactionId: momoTransactionId.trim(),
-    status: 'momo-paid',
+    status: 'momo-review-pending',
+    updatedAt: new Date().toISOString(),
+  };
+
+  await writeLocalRegistrations(registrations);
+  return registrations[index];
+}
+
+async function confirmPayment(id) {
+  const mode = getStoreMode();
+  if (mode === 'mongo') {
+    const registration = await Registration.findById(id);
+    if (!registration) return null;
+    if (registration.status === 'momo-paid' || registration.status === 'cash-paid') {
+      const error = new Error('This payment has already been confirmed.');
+      error.statusCode = 409;
+      throw error;
+    }
+
+    if (registration.paymentMethod === 'momo') {
+      if (!registration.momoTransactionId) {
+        const error = new Error('A momo transaction ID is required before payment can be confirmed.');
+        error.statusCode = 409;
+        throw error;
+      }
+      registration.status = 'momo-paid';
+    } else {
+      registration.status = 'cash-paid';
+    }
+
+    await registration.save();
+    await mirrorRegistrationLocally(registration);
+    return registration;
+  }
+  if (mode === 'unavailable') {
+    throw createUnavailableError();
+  }
+
+  const registrations = await readLocalRegistrations();
+  const index = registrations.findIndex((item) => String(item._id) === String(id));
+  if (index === -1) return null;
+  if (registrations[index].status === 'momo-paid' || registrations[index].status === 'cash-paid') {
+    const error = new Error('This payment has already been confirmed.');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  if (registrations[index].paymentMethod === 'momo' && !registrations[index].momoTransactionId) {
+    const error = new Error('A momo transaction ID is required before payment can be confirmed.');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  registrations[index] = {
+    ...registrations[index],
+    status: registrations[index].paymentMethod === 'momo' ? 'momo-paid' : 'cash-paid',
     updatedAt: new Date().toISOString(),
   };
 
@@ -282,6 +347,7 @@ module.exports = {
   findAllNewestFirst,
   findOne,
   getStoreMode,
-  confirmMomoPayment,
+  confirmPayment,
+  submitMomoPayment,
   syncLocalRegistrationsToMongo,
 };

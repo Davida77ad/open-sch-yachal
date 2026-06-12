@@ -1,5 +1,7 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const registrationStore = require('../services/registrationStore');
+const { sendSlotConfirmation } = require('../services/emailNotifier');
 
 const router = express.Router();
 
@@ -18,13 +20,48 @@ router.use((req, res, next) => {
 router.get('/registrations', async (req, res) => {
   try {
     const registrations = await registrationStore.findAllNewestFirst();
-    res.json({ registrations, storage: registrationStore.getStoreMode() });
+    res.json({
+      registrations,
+      storage: registrationStore.getStoreMode(),
+      database: mongoose.connection.name || null,
+    });
   } catch (error) {
     if (error.statusCode === 503) {
       return res.status(503).json({ message: error.message });
     }
     console.error(error);
     res.status(500).json({ message: 'Unable to load registrations.' });
+  }
+});
+
+router.post('/registrations/:id/confirm-payment', async (req, res) => {
+  try {
+    const registration = await registrationStore.confirmPayment(req.params.id);
+    if (!registration) {
+      return res.status(404).json({ message: 'Registration not found.' });
+    }
+
+    let email = { sent: false };
+    try {
+      email = await sendSlotConfirmation(registration);
+    } catch (error) {
+      console.error('Unable to send slot confirmation email:', error.message);
+      email = { sent: false, reason: error.message };
+    }
+
+    return res.json({
+      message: email.sent
+        ? 'Payment confirmed and slot confirmation email sent.'
+        : 'Payment confirmed, but the slot confirmation email could not be sent.',
+      registration,
+      email,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ message: 'Unable to confirm payment.' });
   }
 });
 

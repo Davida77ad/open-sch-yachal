@@ -87,8 +87,12 @@ mongoose.connection.on('reconnected', () => {
 
 async function startServer() {
   try {
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: mongoTimeoutMs });
-    console.log('Connected to MongoDB');
+    const mongoOptions = { serverSelectionTimeoutMS: mongoTimeoutMs };
+    if (process.env.MONGODB_DB_NAME) {
+      mongoOptions.dbName = process.env.MONGODB_DB_NAME;
+    }
+    await mongoose.connect(mongoUri, mongoOptions);
+    console.log(`Connected to MongoDB database: ${mongoose.connection.name}`);
     await syncFallbackRecords();
   } catch (error) {
     console.error('MongoDB connection failed:', error.message);

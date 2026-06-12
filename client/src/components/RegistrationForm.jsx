@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001';
+const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? 'https://open-sch-yachal.onrender.com' : 'http://localhost:4001');
 const MOMO_NUMBER = '0544600600';
 const USD_AMOUNT = 20;
 const USD_TO_GHS = 11.14;
@@ -114,7 +114,8 @@ export default function RegistrationForm() {
         return;
       }
 
-      setConfirmation('Payment confirmed. Your registration is now complete.');
+      setMessage('');
+      setConfirmation('Form submitted successfully. An admin will review your payment. After confirmation, you will receive an email confirming your slot.');
       setRegistration(data.registration);
       setStep('complete');
     } catch (confirmError) {
@@ -314,14 +315,14 @@ export default function RegistrationForm() {
 
       {step === 'complete' && registration && (
         <div className="next-step">
-          <h2>Registration saved</h2>
+          <h2>{registration.status === 'momo-review-pending' ? 'Form submitted successfully' : 'Registration saved'}</h2>
           <p>
             Thank you, {registration.fullName}. Your registration for the Ghana center at Yachal House, Ridge Accra has been saved.
           </p>
           <div className="note">
             {registration.paymentMethod === 'cash'
               ? 'Please pay cash in person at the Ghana center when you arrive.'
-              : 'Your momo payment has been submitted and marked as paid.'}
+              : `An admin will review your Momo payment. After confirmation, you will receive an email confirming your slot. If you need help, contact ${MOMO_NUMBER}.`}
           </div>
         </div>
       )}

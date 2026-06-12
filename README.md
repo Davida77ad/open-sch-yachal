@@ -7,8 +7,8 @@ This workspace contains a MERN stack registration app for the Ghana approved cen
 - `backend/` - Express API plus MongoDB registration tracking
 - `client/` - React + Vite registration form and admin dashboard
 - Unique `OpenSch-Yachalxxx` momo reference generation per email
-- Separate momo payment workflow with transaction ID confirmation
-- Admin CSV export and registration status tracking
+- Momo transaction submission followed by admin payment review
+- Admin payment confirmation, applicant slot email, CSV export, and status tracking
 
 ## Setup
 

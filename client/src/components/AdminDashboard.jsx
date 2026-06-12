@@ -1,9 +1,10 @@
 import { useState } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001';
+const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? 'https://open-sch-yachal.onrender.com' : 'http://localhost:4001');
 
 function formatStatus(status) {
   if (status === 'awaiting-momo-payment') return 'Awaiting momo payment';
+  if (status === 'momo-review-pending') return 'Momo awaiting admin review';
   if (status === 'momo-paid') return 'Momo paid';
   if (status === 'cash-pending') return 'Cash pending';
   if (status === 'cash-paid') return 'Cash paid';
@@ -18,6 +19,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [storage, setStorage] = useState('');
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [confirmingId, setConfirmingId] = useState('');
 
   const loadRegistrations = async () => {
     setLoading(true);
@@ -40,12 +42,46 @@ export default function AdminDashboard() {
       setStorage(data.storage || '');
       setHasLoaded(true);
       const storageLabel = data.storage === 'file' ? 'local file storage' : data.storage === 'mongo' ? 'MongoDB' : 'storage';
-      setMessage(`Loaded ${data.registrations.length} registrations from ${storageLabel}.`);
+      const databaseLabel = data.database ? ` (${data.database})` : '';
+      setMessage(`Loaded ${data.registrations.length} registrations from ${storageLabel}${databaseLabel}.`);
     } catch (loadError) {
       setError('Unable to reach the server.');
       console.error(loadError);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const confirmPayment = async (registration) => {
+    setConfirmingId(registration._id);
+    setError('');
+    setMessage('');
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/registrations/${registration._id}/confirm-payment`, {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || 'Unable to confirm payment.');
+        return;
+      }
+
+      setRegistrations((current) => current.map((item) => (
+        item._id === data.registration._id ? data.registration : item
+      )));
+      if (data.email?.sent) {
+        setMessage(`${data.registration.fullName}'s payment is confirmed and their slot confirmation email was sent.`);
+      } else {
+        setError(`${data.registration.fullName}'s payment is confirmed, but the email was not sent. Please contact them directly.`);
+      }
+    } catch (confirmError) {
+      setError('Unable to reach the server.');
+      console.error(confirmError);
+    } finally {
+      setConfirmingId('');
     }
   };
 
@@ -123,12 +159,13 @@ export default function AdminDashboard() {
               <th>Status</th>
               <th>Reference</th>
               <th>Transaction</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {hasLoaded && !loading && registrations.length === 0 && (
               <tr>
-                <td className="empty-table" colSpan="9">No registrations loaded from this data source.</td>
+                <td className="empty-table" colSpan="10">No registrations loaded from this data source.</td>
               </tr>
             )}
             {registrations.map((item) => (
@@ -146,6 +183,18 @@ export default function AdminDashboard() {
                 </td>
                 <td>{item.momoReference || '-'}</td>
                 <td>{item.momoTransactionId || '-'}</td>
+                <td>
+                  {(item.status === 'momo-review-pending' || item.status === 'cash-pending') ? (
+                    <button
+                      className="action-button"
+                      type="button"
+                      onClick={() => confirmPayment(item)}
+                      disabled={confirmingId === item._id}
+                    >
+                      {confirmingId === item._id ? 'Confirming...' : 'Confirm payment'}
+                    </button>
+                  ) : '-'}
+                </td>
               </tr>
             ))}
           </tbody>

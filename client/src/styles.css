@@ -169,6 +169,56 @@ main {
   margin: 0;
 }
 
+.about-section {
+  padding: 0;
+  overflow: hidden;
+}
+
+.about-section summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: clamp(18px, 4vw, 24px) clamp(20px, 4vw, 28px);
+  color: #0f172a;
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.about-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.about-section summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  color: #2563eb;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.about-section[open] summary::after {
+  content: "-";
+}
+
+.about-section summary:hover {
+  background: #f8fafc;
+}
+
+.accordion-hint {
+  margin-left: auto;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.accordion-content {
+  padding: 0 clamp(20px, 4vw, 28px) clamp(18px, 4vw, 28px);
+  border-top: 1px solid #e2e8f0;
+}
+
 a {
   color: #2563eb;
   text-decoration: none;
@@ -287,6 +337,142 @@ textarea {
   padding-top: clamp(16px, 4vw, 24px);
 }
 
+.progress-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: clamp(22px, 4vw, 30px);
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+  font-weight: 600;
+}
+
+.step-number {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  background: white;
+}
+
+.progress-step.active,
+.progress-step.complete {
+  color: #1d4ed8;
+}
+
+.progress-step.active .step-number,
+.progress-step.complete .step-number {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: white;
+}
+
+.payment-section {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.payment-heading {
+  margin-bottom: 20px;
+}
+
+.payment-heading .eyebrow {
+  margin-bottom: 6px;
+}
+
+.payment-guide {
+  display: grid;
+  gap: 16px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.payment-guide-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  padding: clamp(16px, 3vw, 22px);
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.guide-number {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: white;
+  font-weight: 700;
+}
+
+.payment-guide-card h3 {
+  margin: 4px 0 6px;
+  color: #0f172a;
+  font-size: clamp(1rem, 2vw, 1.15rem);
+}
+
+.payment-guide-card p {
+  margin: 0 0 14px;
+}
+
+.reference-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px dashed #60a5fa;
+  border-radius: 10px;
+  background: white;
+}
+
+.reference-box strong {
+  color: #1d4ed8;
+  font-size: clamp(1rem, 3vw, 1.25rem);
+  overflow-wrap: anywhere;
+}
+
+.copy-button {
+  flex: 0 0 auto;
+}
+
+.payment-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.payment-summary span {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: white;
+  color: #475569;
+}
+
+.payment-submit {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.payment-guide-card .submit-note {
+  margin: 8px 0 0;
+  color: #92400e;
+  font-size: 0.82rem;
+}
+
 .table-wrapper {
   overflow-x: auto;
   border-radius: 8px;
@@ -357,6 +543,28 @@ table td {
   button {
     font-size: 0.8rem;
     padding: 8px 12px;
+  }
+
+  .accordion-hint {
+    display: none;
+  }
+
+  .progress-step {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .payment-guide-card {
+    grid-template-columns: 1fr;
+  }
+
+  .reference-box {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .copy-button {
+    width: 100%;
   }
 
   input,

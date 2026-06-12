@@ -55,12 +55,17 @@ export default function App() {
       <main>
         {!showAdmin ? (
           <>
-            <section className="panel about-section">
-              <h2>About Open School of Ministry</h2>
-              <p>Our local church, Saints Community Church, runs an internal leadership training school called Livingword Ministerial Academy (L.M.A), which is open ONLY to leaders of our local church. However, at different times in the past, we have organized "Open Classes" to our church members who were/are not otherwise qualified for the school and non-church members.</p>
-              <p>It is called "Open School of Ministry", which firstly held in July 2015, followed by three subsequent instalments, with the latest holding in July 2024.</p>
-              <p>The fifth edition will be held from <strong>Monday, July 6th - Wednesday, July 8th, 2026</strong>, with arrival on <strong>Sunday, July 5th, 2026</strong>.</p>
-            </section>
+            <details className="panel about-section">
+              <summary>
+                <span>About Open School of Ministry</span>
+                <span className="accordion-hint">Click to read</span>
+              </summary>
+              <div className="accordion-content">
+                <p>Our local church, Saints Community Church, runs an internal leadership training school called Livingword Ministerial Academy (L.M.A), which is open ONLY to leaders of our local church. However, at different times in the past, we have organized "Open Classes" for church members who are not otherwise qualified for the school and for non-church members.</p>
+                <p>It is called "Open School of Ministry". It was first held in July 2015, followed by three subsequent editions, with the latest held in July 2024.</p>
+                <p>The fifth edition will be held from <strong>Monday, July 6 - Wednesday, July 8, 2026</strong>, with arrival on <strong>Sunday, July 5, 2026</strong>.</p>
+              </div>
+            </details>
 
             <RegistrationForm />
           </>

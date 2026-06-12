@@ -26,6 +26,7 @@ export default function RegistrationForm() {
 
   const isMomo = registration ? registration.paymentMethod === 'momo' : form.paymentMethod === 'momo';
   const amountGhs = (USD_AMOUNT * USD_TO_GHS).toFixed(2);
+  const activeStep = step === 'form' ? 1 : step === 'payment' ? 2 : 3;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -131,21 +132,38 @@ export default function RegistrationForm() {
 
   return (
     <div className="panel">
-      <h2>Ghana-only registration</h2>
-      <p>
-        This registration is only for the Ghana approved center at Yachal House, Ridge Accra. If you are outside Ghana,
-        visit <a href="https://osom.saintscommunity.net/" target="_blank" rel="noopener noreferrer">https://osom.saintscommunity.net/</a>.
-      </p>
-      <div className="note">
-        <p>
-          Payment via momo: <strong>{MOMO_NUMBER}</strong>. This fee is USD {USD_AMOUNT}, so the amount to send in cedis is shown below. Choose <strong>momo</strong> for online payment or <strong>cash</strong> for in-person payment.
-        </p>
+      <div className="progress-steps" aria-label={`Registration progress: step ${activeStep} of 3`}>
+        {['Registration', 'Payment', 'Confirmation'].map((label, index) => {
+          const stepNumber = index + 1;
+          const state = stepNumber < activeStep ? 'complete' : stepNumber === activeStep ? 'active' : '';
+          return (
+            <div className={`progress-step ${state}`} key={label}>
+              <span className="step-number">{stepNumber}</span>
+              <span>{label}</span>
+            </div>
+          );
+        })}
       </div>
-      <div className="note">
-        <p>
-          Momo amount: <strong>GHS {amountGhs}</strong> using the current rate <strong>1 USD = GHS {USD_TO_GHS.toFixed(2)}</strong>. Kindly make payment to {MOMO_NUMBER} secure your spot and then submit the momo transaction ID in the form after payment. If you choose cash, please pay in person at the Ghana center when you arrive.
-        </p>
-      </div>
+
+      {step === 'form' && (
+        <>
+          <h2>Ghana-only registration</h2>
+          <p>
+            This registration is only for the Ghana approved center at Yachal House, Ridge Accra. If you are outside Ghana,
+            visit <a href="https://osom.saintscommunity.net/" target="_blank" rel="noopener noreferrer">https://osom.saintscommunity.net/</a>.
+          </p>
+          <div className="note">
+            <p>
+              Payment via Momo: <strong>{MOMO_NUMBER}</strong>. This fee is USD {USD_AMOUNT}, so the amount to send in cedis is shown below. Choose <strong>Momo</strong> for online payment or <strong>cash</strong> for in-person payment.
+            </p>
+          </div>
+          <div className="note">
+            <p>
+              Momo amount: <strong>GHS {amountGhs}</strong> using the current rate <strong>1 USD = GHS {USD_TO_GHS.toFixed(2)}</strong>. Make payment to {MOMO_NUMBER} to secure your spot, then submit the Momo transaction ID after payment. If you choose cash, please pay in person at the Ghana center when you arrive.
+            </p>
+          </div>
+        </>
+      )}
 
       {error && <div className="alert">{error}</div>}
       {message && <div className="note">{message}</div>}
@@ -216,34 +234,63 @@ export default function RegistrationForm() {
       )}
 
       {step === 'payment' && isMomo && registration?.momoReference && (
-        <div className="next-step">
-          <h2>Momo payment reference</h2>
-          <p>Use this reference when sending momo payment to {MOMO_NUMBER}.</p>
-          <div className="note">
-            <strong>{registration.momoReference}</strong>
+        <div className="next-step payment-section">
+          <div className="payment-heading">
+            <p className="eyebrow">Step 2 of 3</p>
+            <h2>Complete your Momo payment</h2>
+            <p>Follow all three instructions below so we can match your payment to your registration.</p>
           </div>
-          <div className="actions">
-            <button className="action-button" type="button" onClick={copyReference}>
-              Copy reference
-            </button>
-          </div>
-          <div className="form-grid">
-            <div className="full-width">
-              <label htmlFor="transactionId">Momo Transaction ID</label>
-              <input
-                id="transactionId"
-                name="transactionId"
-                value={transactionId}
-                onChange={(event) => setTransactionId(event.target.value)}
-                placeholder="Paste the momo transaction ID here"
-              />
-            </div>
-          </div>
-          <div className="actions">
-            <button className="action-button" type="button" onClick={handleConfirm} disabled={loading}>
-              {loading ? 'Confirming...' : 'Submit transaction ID'}
-            </button>
-          </div>
+
+          <ol className="payment-guide">
+            <li className="payment-guide-card">
+              <span className="guide-number">1</span>
+              <div>
+                <h3>Copy your payment reference</h3>
+                <p>You must use this exact reference as the payment reference when sending the Momo payment.</p>
+                <div className="reference-box">
+                  <strong>{registration.momoReference}</strong>
+                  <button className="action-button copy-button" type="button" onClick={copyReference}>
+                    Copy reference
+                  </button>
+                </div>
+              </div>
+            </li>
+
+            <li className="payment-guide-card">
+              <span className="guide-number">2</span>
+              <div>
+                <h3>Make the Momo payment</h3>
+                <p>
+                  Send <strong>GHS {amountGhs}</strong> to <strong>{MOMO_NUMBER}</strong>. When asked for a reference,
+                  paste <strong>{registration.momoReference}</strong> so your payment can be identified.
+                </p>
+                <div className="payment-summary">
+                  <span>Momo number <strong>{MOMO_NUMBER}</strong></span>
+                  <span>Amount <strong>GHS {amountGhs}</strong></span>
+                </div>
+              </div>
+            </li>
+
+            <li className="payment-guide-card">
+              <span className="guide-number">3</span>
+              <div>
+                <h3>Submit the transaction ID</h3>
+                <p>After the payment goes through, Momo will give you a transaction ID. Enter that ID below and submit it to confirm that you have paid.</p>
+                <label htmlFor="transactionId">Momo Transaction ID</label>
+                <input
+                  id="transactionId"
+                  name="transactionId"
+                  value={transactionId}
+                  onChange={(event) => setTransactionId(event.target.value)}
+                  placeholder="Enter the transaction ID from Momo"
+                />
+                <button className="action-button payment-submit" type="button" onClick={handleConfirm} disabled={loading}>
+                  {loading ? 'Submitting payment...' : 'I have paid - submit transaction ID'}
+                </button>
+                <p className="submit-note">Only submit after the payment has gone through successfully.</p>
+              </div>
+            </li>
+          </ol>
         </div>
       )}
 

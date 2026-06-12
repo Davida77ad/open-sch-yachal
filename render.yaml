@@ -9,13 +9,11 @@ services:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
-        fromDatabase:
-          name: open-school-db
-          property: connectionString
+        sync: false
       - key: PORT
         value: 10000
       - key: CLIENT_URL
-        value: https://open-sch-yachal.onrender.com
+        value: https://register.yachalhousegh.com,https://open-sch-yachal.pages.dev
       - key: ADMIN_TOKEN
         sync: false
 
@@ -24,7 +22,3 @@ services:
     runtime: static site
     buildCommand: cd client && npm install && npm run build
     staticPublishPath: client/dist
-
-databases:
-  - name: open-school-db
-    plan: free

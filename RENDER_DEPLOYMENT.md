@@ -18,9 +18,9 @@
    ```
    NODE_ENV=production
    PORT=10000
-   MONGODB_URI=mongodb+srv://byourself77by_db_user:Yachal-openSch@cluster0.fbhs1vy.mongodb.net/open-school-yachal?retryWrites=true&w=majority
-   CLIENT_URL=https://open-sch-yachal.onrender.com
-   ADMIN_TOKEN=Open-ScHool-Yachal-Admin-Token-For-0H-OH-i-MeanT-WITH-deadLINE-ON19-juLlie-26-Yachal-openSch
+   MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>/<database>?retryWrites=true&w=majority
+   CLIENT_URL=https://register.yachalhousegh.com,https://open-sch-yachal.pages.dev
+   ADMIN_TOKEN=<generate-a-long-random-token>
    ```
 
 4. **Deploy**

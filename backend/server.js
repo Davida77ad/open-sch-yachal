@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const dns = require('dns');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const registrationRoutes = require('./routes/registrations');
@@ -7,6 +8,16 @@ const adminRoutes = require('./routes/admin');
 const { enableFileFallback, getStoreMode } = require('./services/registrationStore');
 
 dotenv.config();
+
+const mongoDnsServers = (process.env.MONGODB_DNS_SERVERS || '')
+  .split(',')
+  .map((server) => server.trim())
+  .filter(Boolean);
+
+if (mongoDnsServers.length > 0) {
+  dns.setServers(mongoDnsServers);
+  console.log(`Using configured MongoDB DNS resolvers: ${mongoDnsServers.join(', ')}`);
+}
 
 const app = express();
 app.use(express.json());

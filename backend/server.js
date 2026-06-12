@@ -10,7 +10,23 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://register.yachalhousegh.com',
+  'https://open-sch-yachal.pages.dev',
+];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Not allowed by CORS'));
+    },
+  })
+);
 
 app.use('/api/registrations', registrationRoutes);
 app.use('/api/admin', adminRoutes);

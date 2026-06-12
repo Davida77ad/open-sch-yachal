@@ -1,6 +1,54 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? 'https://open-sch-yachal.onrender.com' : 'http://localhost:4001');
+const API_BASE = import.meta.env.PROD ? '' : import.meta.env.VITE_API_BASE || 'http://localhost:4001';
+const ADMIN_TOKEN_KEY = 'open-school-admin-token';
+const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+
+function wait(milliseconds) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+async function requestApi(path, options = {}, onRetry = () => {}) {
+  let lastError;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 90000);
+    try {
+      const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        signal: controller.signal,
+      });
+      window.clearTimeout(timeout);
+
+      if (RETRYABLE_STATUSES.has(response.status) && attempt === 0) {
+        onRetry();
+        await wait(2000);
+        continue;
+      }
+      return response;
+    } catch (error) {
+      window.clearTimeout(timeout);
+      lastError = error;
+      if (attempt === 0) {
+        onRetry();
+        await wait(2000);
+        continue;
+      }
+    }
+  }
+
+  throw lastError || new Error('Unable to reach the server.');
+}
+
+async function readJsonResponse(response) {
+  const text = await response.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error('The server returned an invalid response. Please refresh and try again.');
+  }
+}
 
 function formatStatus(status) {
   if (status === 'awaiting-momo-payment') return 'Awaiting momo payment';
@@ -12,7 +60,7 @@ function formatStatus(status) {
 }
 
 export default function AdminDashboard() {
-  const [token, setToken] = useState('');
+  const [token, setToken] = useState(() => window.sessionStorage.getItem(ADMIN_TOKEN_KEY) || '');
   const [registrations, setRegistrations] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -23,37 +71,70 @@ export default function AdminDashboard() {
   const [deletingId, setDeletingId] = useState('');
   const [editingId, setEditingId] = useState('');
   const [editForm, setEditForm] = useState(null);
+  const [loadingStatus, setLoadingStatus] = useState('');
+  const [capabilities, setCapabilities] = useState({});
 
-  const loadRegistrations = async () => {
-    setLoading(true);
+  const loadRegistrations = useCallback(async ({ silent = false } = {}) => {
+    const adminToken = token.trim();
+    if (!adminToken) {
+      setError('Enter your admin token to load registrations.');
+      return;
+    }
+
+    if (!silent) setLoading(true);
     setError('');
-    setMessage('');
-    setHasLoaded(false);
+    if (!silent) {
+      setMessage('');
+      setLoadingStatus('Connecting to the registration database...');
+    }
+
+    const wakingTimer = window.setTimeout(() => {
+      if (!silent) setLoadingStatus('The server is waking up. This can take up to a minute...');
+    }, 5000);
 
     try {
-      const response = await fetch(`${API_BASE}/api/admin/registrations`, {
-        headers: { 'x-admin-token': token },
+      const response = await requestApi('/api/admin/registrations', {
+        headers: { 'x-admin-token': adminToken },
+      }, () => {
+        if (!silent) setLoadingStatus('Retrying the server connection...');
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
 
       if (!response.ok) {
         setError(data.message || 'Unable to load registrations.');
         return;
       }
 
-      setRegistrations(data.registrations || []);
+      const loadedRegistrations = Array.isArray(data.registrations) ? data.registrations : [];
+      setRegistrations(loadedRegistrations);
       setStorage(data.storage || '');
+      setCapabilities(data.capabilities || {});
       setHasLoaded(true);
+      window.sessionStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
       const storageLabel = data.storage === 'file' ? 'local file storage' : data.storage === 'mongo' ? 'MongoDB' : 'storage';
       const databaseLabel = data.database ? ` (${data.database})` : '';
-      setMessage(`Loaded ${data.registrations.length} registrations from ${storageLabel}${databaseLabel}.`);
+      setMessage(`Showing ${loadedRegistrations.length} registrations from ${storageLabel}${databaseLabel}.`);
     } catch (loadError) {
-      setError('Unable to reach the server.');
+      setError(loadError.name === 'AbortError'
+        ? 'The registration server took too long to respond. Please press Refresh registrations.'
+        : loadError.message || 'Unable to reach the server.');
       console.error(loadError);
     } finally {
-      setLoading(false);
+      window.clearTimeout(wakingTimer);
+      if (!silent) {
+        setLoading(false);
+        setLoadingStatus('');
+      }
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (!hasLoaded) return undefined;
+    const interval = window.setInterval(() => {
+      loadRegistrations({ silent: true });
+    }, 60000);
+    return () => window.clearInterval(interval);
+  }, [hasLoaded, loadRegistrations]);
 
   const confirmPayment = async (registration) => {
     setConfirmingId(registration._id);
@@ -61,11 +142,11 @@ export default function AdminDashboard() {
     setMessage('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/admin/registrations/${registration._id}/confirm-payment`, {
+      const response = await requestApi(`/api/admin/registrations/${registration._id}/confirm-payment`, {
         method: 'POST',
-        headers: { 'x-admin-token': token },
+        headers: { 'x-admin-token': token.trim() },
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
 
       if (!response.ok) {
         setError(data.message || 'Unable to confirm payment.');
@@ -118,15 +199,15 @@ export default function AdminDashboard() {
     setError('');
     setMessage('');
     try {
-      const response = await fetch(`${API_BASE}/api/admin/registrations/${editingId}`, {
+      const response = await requestApi(`/api/admin/registrations/${editingId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-token': token,
+          'x-admin-token': token.trim(),
         },
         body: JSON.stringify(editForm),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
       if (!response.ok) {
         setError(data.message || 'Unable to update registration.');
         return;
@@ -155,11 +236,11 @@ export default function AdminDashboard() {
     setError('');
     setMessage('');
     try {
-      const response = await fetch(`${API_BASE}/api/admin/registrations/${registration._id}`, {
+      const response = await requestApi(`/api/admin/registrations/${registration._id}`, {
         method: 'DELETE',
-        headers: { 'x-admin-token': token },
+        headers: { 'x-admin-token': token.trim() },
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
       if (!response.ok) {
         setError(data.message || 'Unable to delete registration.');
         return;
@@ -183,8 +264,8 @@ export default function AdminDashboard() {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/admin/export`, {
-        headers: { 'x-admin-token': token },
+      const response = await requestApi('/api/admin/export', {
+        headers: { 'x-admin-token': token.trim() },
       });
 
       if (!response.ok) {
@@ -215,27 +296,34 @@ export default function AdminDashboard() {
 
       {error && <div className="alert">{error}</div>}
       {message && <div className="note">{message}</div>}
+      {loadingStatus && <div className="note" role="status">{loadingStatus}</div>}
       {storage === 'file' && (
         <div className="storage-warning">
           Local development is using <strong>registrations.local.json</strong>. These records will not appear in MongoDB Compass or the production admin dashboard.
         </div>
       )}
 
-      <div className="form-grid two-col">
+      <form className="form-grid two-col" onSubmit={(event) => { event.preventDefault(); loadRegistrations(); }}>
         <div>
           <label htmlFor="adminToken">Admin Token</label>
           <input id="adminToken" value={token} onChange={(event) => setToken(event.target.value)} placeholder="Enter admin token" />
         </div>
-      </div>
+      </form>
 
       <div className="actions">
         <button className="action-button" type="button" onClick={loadRegistrations} disabled={loading || !token}>
-          {loading ? 'Loading...' : 'Load registrations'}
+          {loading ? 'Loading...' : hasLoaded ? 'Refresh registrations' : 'Load registrations'}
         </button>
         <button className="secondary-button" type="button" onClick={exportCsv} disabled={!token}>
           Download CSV
         </button>
       </div>
+
+      {hasLoaded && (
+        <div className="registration-count" role="status">
+          <strong>{registrations.length}</strong> registration{registrations.length === 1 ? '' : 's'} available
+        </div>
+      )}
 
       <div className="table-wrapper">
         <table>
@@ -302,15 +390,15 @@ export default function AdminDashboard() {
                 <td>{item.momoTransactionId || '-'}</td>
                 <td>
                   <div className="table-actions">
-                    {editingId === item._id ? (
+                    {capabilities.updateRegistration && editingId === item._id ? (
                       <>
                         <button className="action-button" type="button" onClick={saveEdit} disabled={loading}>Save</button>
                         <button className="secondary-button" type="button" onClick={cancelEdit} disabled={loading}>Cancel</button>
                       </>
-                    ) : (
+                    ) : capabilities.updateRegistration ? (
                       <button className="secondary-button" type="button" onClick={() => startEdit(item)}>Edit</button>
-                    )}
-                    {(item.status === 'momo-review-pending' || item.status === 'cash-pending') && editingId !== item._id && (
+                    ) : null}
+                    {capabilities.confirmPayment && (item.status === 'momo-review-pending' || item.status === 'cash-pending') && editingId !== item._id && (
                       <button
                         className="action-button"
                         type="button"
@@ -320,7 +408,7 @@ export default function AdminDashboard() {
                         {confirmingId === item._id ? 'Confirming...' : 'Confirm payment'}
                       </button>
                     )}
-                    {editingId !== item._id && (
+                    {capabilities.deleteRegistration && editingId !== item._id && (
                       <button
                         className="secondary-button"
                         type="button"
@@ -330,6 +418,7 @@ export default function AdminDashboard() {
                         {deletingId === item._id ? 'Deleting...' : 'Delete'}
                       </button>
                     )}
+                    {!capabilities.updateRegistration && !capabilities.confirmPayment && !capabilities.deleteRegistration && '-'}
                   </div>
                 </td>
               </tr>

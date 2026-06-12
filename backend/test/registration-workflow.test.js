@@ -111,6 +111,12 @@ test('Momo registration waits for admin review before becoming paid', async (t) 
   const list = await listResponse.json();
   assert.equal(list.registrations.length, 1);
   assert.equal(list.registrations[0].momoTransactionId, 'TEST-TXN-123');
+  assert.deepEqual(list.capabilities, {
+    confirmPayment: true,
+    deleteRegistration: true,
+    readRegistration: true,
+    updateRegistration: true,
+  });
 
   const confirmResponse = await fetch(
     `${baseUrl}/api/admin/registrations/${created.registration._id}/confirm-payment`,

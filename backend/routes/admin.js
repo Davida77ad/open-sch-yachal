@@ -125,6 +125,12 @@ router.get('/registrations', async (req, res) => {
       registrations,
       storage: registrationStore.getStoreMode(),
       database: mongoose.connection.name || null,
+      capabilities: {
+        confirmPayment: true,
+        deleteRegistration: true,
+        readRegistration: true,
+        updateRegistration: true,
+      },
     });
   } catch (error) {
     if (error.statusCode === 503) {

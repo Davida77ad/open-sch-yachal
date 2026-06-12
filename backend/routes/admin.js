@@ -1,7 +1,15 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const registrationStore = require('../services/registrationStore');
-const { sendSlotConfirmation } = require('../services/emailNotifier');
+const {
+  getEmailStatus,
+  sendApplicantPaymentReviewReceipt,
+  sendApplicantRegistrationReceipt,
+  sendAdminTestEmail,
+  sendMomoPaymentReviewNotification,
+  sendRegistrationNotification,
+  sendSlotConfirmation,
+} = require('../services/emailNotifier');
 
 const router = express.Router();
 const editableFields = ['fullName', 'email', 'phone', 'country', 'church', 'churchRole'];
@@ -118,6 +126,32 @@ router.post('/database-check', async (req, res) => {
   }
 });
 
+router.get('/email-status', (req, res) => {
+  res.json({ email: getEmailStatus() });
+});
+
+router.post('/email-test', async (req, res) => {
+  try {
+    const result = await sendAdminTestEmail();
+    if (!result.sent) {
+      return res.status(503).json({
+        message: 'Email notifications are not configured.',
+        email: getEmailStatus(),
+      });
+    }
+    return res.json({
+      message: 'Test email sent to both administrators.',
+      email: getEmailStatus(),
+      result,
+    });
+  } catch (error) {
+    return res.status(502).json({
+      message: `Email test failed: ${error.message}`,
+      email: getEmailStatus(),
+    });
+  }
+});
+
 router.get('/registrations', async (req, res) => {
   try {
     const registrations = await registrationStore.findAllNewestFirst();
@@ -125,10 +159,13 @@ router.get('/registrations', async (req, res) => {
       registrations,
       storage: registrationStore.getStoreMode(),
       database: mongoose.connection.name || null,
+      email: getEmailStatus(),
       capabilities: {
         confirmPayment: true,
         deleteRegistration: true,
+        emailDiagnostics: true,
         readRegistration: true,
+        resendEmails: true,
         updateRegistration: true,
       },
     });
@@ -154,6 +191,53 @@ router.get('/registrations/:id', async (req, res) => {
     return res.json({ registration });
   } catch (error) {
     return sendAdminError(res, error, 'Unable to load registration.');
+  }
+});
+
+router.post('/registrations/:id/resend-email', async (req, res) => {
+  if (!isValidId(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid registration ID.' });
+  }
+
+  try {
+    const registration = await registrationStore.findById(req.params.id);
+    if (!registration) {
+      return res.status(404).json({ message: 'Registration not found.' });
+    }
+
+    const emails = [
+      () => sendRegistrationNotification(registration, { force: true }),
+      () => sendApplicantRegistrationReceipt(registration, { force: true }),
+    ];
+    if (registration.status === 'momo-review-pending') {
+      emails.push(
+        () => sendMomoPaymentReviewNotification(registration, { force: true }),
+        () => sendApplicantPaymentReviewReceipt(registration, { force: true })
+      );
+    }
+    if (registration.status === 'momo-paid' || registration.status === 'cash-paid') {
+      emails.push(() => sendSlotConfirmation(registration, { force: true }));
+    }
+
+    const results = await Promise.allSettled(emails.map((send) => send()));
+    const failed = results.filter((result) => result.status === 'rejected' || result.value?.sent !== true);
+    if (failed.length > 0) {
+      return res.status(502).json({
+        message: `${results.length - failed.length} of ${results.length} emails sent. Check the email status for the failure.`,
+        email: getEmailStatus(),
+      });
+    }
+
+    return res.json({
+      message: `Emails resent successfully for ${registration.fullName}.`,
+      email: getEmailStatus(),
+      sent: results.length,
+    });
+  } catch (error) {
+    return res.status(502).json({
+      message: `Unable to resend emails: ${error.message}`,
+      email: getEmailStatus(),
+    });
   }
 });
 

@@ -623,6 +623,54 @@ table td {
   font-size: 0.88rem;
 }
 
+.email-status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid #bbf7d0;
+  border-left: 5px solid #16a34a;
+  border-radius: 12px;
+  background: #f0fdf4;
+}
+
+.email-status-error {
+  border-color: #fecaca;
+  border-left-color: #dc2626;
+  background: #fff7f7;
+}
+
+.email-status-card h3,
+.email-status-card p {
+  margin: 0;
+}
+
+.email-status-card h3 {
+  margin-bottom: 3px;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.email-status-card p {
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.email-status-card .email-status-label {
+  color: #15803d;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.email-status-card .email-error-text {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
 .empty-registrations {
   margin-top: 20px;
   padding: 28px;
@@ -948,7 +996,8 @@ table td select {
   }
 
   .toolbar-footer,
-  .pagination {
+  .pagination,
+  .email-status-card {
     align-items: stretch;
     flex-direction: column;
   }

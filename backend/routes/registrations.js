@@ -29,7 +29,10 @@ async function sendNotifications(notifications, context) {
       console.error(`Unable to send ${context} email:`, result.reason.message);
     }
   });
-  return results;
+  return results.map((result) => ({
+    sent: result.status === 'fulfilled' && result.value?.sent === true,
+    reason: result.status === 'rejected' ? result.reason.message : result.value?.reason || null,
+  }));
 }
 
 router.post('/', async (req, res) => {
@@ -54,9 +57,17 @@ router.post('/', async (req, res) => {
 
     if (existing) {
       if (existing.paymentMethod === 'momo' && existing.status === 'awaiting-momo-payment') {
+        const notificationResults = await sendNotifications([
+          () => sendRegistrationNotification(existing),
+          () => sendApplicantRegistrationReceipt(existing),
+        ], 'existing registration');
         return res.status(200).json({
           message: 'A momo payment reference already exists for this email.',
           registration: existing,
+          notifications: {
+            admins: notificationResults[0],
+            applicant: notificationResults[1],
+          },
         });
       }
       return res.status(409).json({ message: 'This email is already registered.' });
@@ -84,12 +95,19 @@ router.post('/', async (req, res) => {
       status,
     });
 
-    await sendNotifications([
+    const notificationResults = await sendNotifications([
       () => sendRegistrationNotification(registration),
       () => sendApplicantRegistrationReceipt(registration),
     ], 'registration');
 
-    res.status(201).json({ message: 'Registration created.', registration });
+    res.status(201).json({
+      message: 'Registration created.',
+      registration,
+      notifications: {
+        admins: notificationResults[0],
+        applicant: notificationResults[1],
+      },
+    });
   } catch (error) {
     sendStorageError(res, error, 'Unable to save registration.');
   }
@@ -112,7 +130,7 @@ router.post('/confirm', async (req, res) => {
       return res.status(404).json({ message: 'Could not find matching registration.' });
     }
 
-    await sendNotifications([
+    const notificationResults = await sendNotifications([
       () => sendMomoPaymentReviewNotification(registration),
       () => sendApplicantPaymentReviewReceipt(registration),
     ], 'payment review');
@@ -120,6 +138,10 @@ router.post('/confirm', async (req, res) => {
     res.status(200).json({
       message: 'Form submitted successfully. Your payment is awaiting admin review.',
       registration,
+      notifications: {
+        admins: notificationResults[0],
+        applicant: notificationResults[1],
+      },
     });
   } catch (error) {
     sendStorageError(res, error, 'Unable to confirm momo payment.');

@@ -5,6 +5,12 @@ const defaultRecipients = [
 
 const SUPPORT_PHONE = '0544600600';
 let warnedAboutMissingConfig = false;
+let deliveryStatus = {
+  lastAttemptAt: null,
+  lastSuccessAt: null,
+  lastFailureAt: null,
+  lastError: null,
+};
 
 function getRecipients() {
   const configured = (process.env.REGISTRATION_NOTIFICATION_EMAILS || '')
@@ -31,30 +37,77 @@ function getConfig() {
 
 async function sendEmail({ to, subject, text, idempotencyKey }) {
   const config = getConfig();
-  if (!config) return { sent: false, reason: 'not-configured' };
-
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    signal: AbortSignal.timeout(10000),
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': idempotencyKey,
-    },
-    body: JSON.stringify({
-      from: config.from,
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      text,
-    }),
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || `Resend returned HTTP ${response.status}.`);
+  deliveryStatus.lastAttemptAt = new Date().toISOString();
+  if (!config) {
+    deliveryStatus.lastFailureAt = deliveryStatus.lastAttemptAt;
+    deliveryStatus.lastError = 'Email service is not configured.';
+    return { sent: false, reason: 'not-configured' };
   }
 
-  return { sent: true, id: data.id };
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        signal: AbortSignal.timeout(15000),
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          from: config.from,
+          to: Array.isArray(to) ? to : [to],
+          subject,
+          text,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        deliveryStatus.lastSuccessAt = new Date().toISOString();
+        deliveryStatus.lastError = null;
+        return { sent: true, id: data.id, attempts: attempt };
+      }
+
+      lastError = new Error(data.message || `Resend returned HTTP ${response.status}.`);
+      if (response.status !== 429 && response.status < 500) break;
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < 3) {
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
+  }
+
+  deliveryStatus.lastFailureAt = new Date().toISOString();
+  deliveryStatus.lastError = lastError?.message || 'Unknown email delivery error.';
+  throw lastError || new Error(deliveryStatus.lastError);
+}
+
+function getEmailStatus() {
+  const config = getConfig();
+  return {
+    configured: Boolean(config),
+    from: config?.from || null,
+    recipients: getRecipients(),
+    ...deliveryStatus,
+  };
+}
+
+function sendAdminTestEmail() {
+  return sendEmail({
+    to: getRecipients(),
+    subject: 'Open School email notifications are working',
+    idempotencyKey: `admin-email-test-${Date.now()}`,
+    text: [
+      'This is a test from the Open School of Ministry Ghana registration system.',
+      '',
+      'Admin email notifications are working correctly.',
+      `For assistance, contact ${SUPPORT_PHONE}.`,
+    ].join('\n'),
+  });
 }
 
 function registrationDetails(registration) {
@@ -71,11 +124,15 @@ function registrationDetails(registration) {
   ];
 }
 
-function sendRegistrationNotification(registration) {
+function createIdempotencyKey(base, options = {}) {
+  return options.force ? `${base}-resend-${Date.now()}` : base;
+}
+
+function sendRegistrationNotification(registration, options) {
   return sendEmail({
     to: getRecipients(),
     subject: `New registration: ${registration.fullName}`,
-    idempotencyKey: `registration-admin-${registration._id}`,
+    idempotencyKey: createIdempotencyKey(`registration-admin-${registration._id}`, options),
     text: [
       'A new Open School of Ministry Ghana registration was submitted.',
       '',
@@ -86,7 +143,7 @@ function sendRegistrationNotification(registration) {
   });
 }
 
-function sendApplicantRegistrationReceipt(registration) {
+function sendApplicantRegistrationReceipt(registration, options) {
   const paymentInstructions = registration.paymentMethod === 'momo'
     ? `Complete the Momo payment to ${SUPPORT_PHONE} using reference ${registration.momoReference}, then submit your transaction ID on the registration page.`
     : 'Your registration has been received. Please pay cash in person at the Ghana center.';
@@ -94,7 +151,7 @@ function sendApplicantRegistrationReceipt(registration) {
   return sendEmail({
     to: registration.email,
     subject: 'Your Open School of Ministry registration was received',
-    idempotencyKey: `registration-applicant-${registration._id}`,
+    idempotencyKey: createIdempotencyKey(`registration-applicant-${registration._id}`, options),
     text: [
       `Hello ${registration.fullName},`,
       '',
@@ -106,11 +163,11 @@ function sendApplicantRegistrationReceipt(registration) {
   });
 }
 
-function sendMomoPaymentReviewNotification(registration) {
+function sendMomoPaymentReviewNotification(registration, options) {
   return sendEmail({
     to: getRecipients(),
     subject: `Momo payment awaiting review: ${registration.fullName}`,
-    idempotencyKey: `payment-review-admin-${registration._id}-${registration.momoTransactionId}`,
+    idempotencyKey: createIdempotencyKey(`payment-review-admin-${registration._id}-${registration.momoTransactionId}`, options),
     text: [
       'A Momo transaction ID has been submitted and requires admin review.',
       '',
@@ -121,11 +178,11 @@ function sendMomoPaymentReviewNotification(registration) {
   });
 }
 
-function sendApplicantPaymentReviewReceipt(registration) {
+function sendApplicantPaymentReviewReceipt(registration, options) {
   return sendEmail({
     to: registration.email,
     subject: 'Your Momo payment is awaiting review',
-    idempotencyKey: `payment-review-applicant-${registration._id}-${registration.momoTransactionId}`,
+    idempotencyKey: createIdempotencyKey(`payment-review-applicant-${registration._id}-${registration.momoTransactionId}`, options),
     text: [
       `Hello ${registration.fullName},`,
       '',
@@ -137,11 +194,11 @@ function sendApplicantPaymentReviewReceipt(registration) {
   });
 }
 
-function sendSlotConfirmation(registration) {
+function sendSlotConfirmation(registration, options) {
   return sendEmail({
     to: registration.email,
     subject: 'Your Open School of Ministry slot is confirmed',
-    idempotencyKey: `slot-confirmed-${registration._id}`,
+    idempotencyKey: createIdempotencyKey(`slot-confirmed-${registration._id}`, options),
     text: [
       `Hello ${registration.fullName},`,
       '',
@@ -154,8 +211,10 @@ function sendSlotConfirmation(registration) {
 }
 
 module.exports = {
+  getEmailStatus,
   sendApplicantPaymentReviewReceipt,
   sendApplicantRegistrationReceipt,
+  sendAdminTestEmail,
   sendMomoPaymentReviewNotification,
   sendRegistrationNotification,
   sendSlotConfirmation,

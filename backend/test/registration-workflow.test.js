@@ -114,7 +114,9 @@ test('Momo registration waits for admin review before becoming paid', async (t) 
   assert.deepEqual(list.capabilities, {
     confirmPayment: true,
     deleteRegistration: true,
+    emailDiagnostics: true,
     readRegistration: true,
+    resendEmails: true,
     updateRegistration: true,
   });
 

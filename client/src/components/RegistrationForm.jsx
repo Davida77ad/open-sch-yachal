@@ -72,11 +72,16 @@ export default function RegistrationForm() {
       }
 
       setRegistration(data.registration);
+      const applicantEmailFailed = data.notifications?.applicant?.sent === false;
       if (data.registration.paymentMethod === 'momo') {
-        setMessage('Your momo payment reference has been generated below. Please copy it and use it as the momo reference when you pay.');
+        setMessage(applicantEmailFailed
+          ? `Your registration is saved, but the confirmation email could not be sent. Continue with the Momo steps below. For help, contact ${MOMO_NUMBER}.`
+          : 'Your momo payment reference has been generated below. A confirmation email was also sent to you.');
         setStep('payment');
       } else {
-        setMessage('Registration saved. Please pay cash in person at the Ghana center when you arrive.');
+        setMessage(applicantEmailFailed
+          ? `Registration saved, but the confirmation email could not be sent. Please pay cash in person. For help, contact ${MOMO_NUMBER}.`
+          : 'Registration saved and a confirmation email was sent. Please pay cash in person at the Ghana center when you arrive.');
         setStep('complete');
       }
     } catch (submitError) {
@@ -115,7 +120,9 @@ export default function RegistrationForm() {
       }
 
       setMessage('');
-      setConfirmation('Form submitted successfully. An admin will review your payment. After confirmation, you will receive an email confirming your slot.');
+      setConfirmation(data.notifications?.applicant?.sent === false
+        ? `Form submitted successfully. The email receipt could not be sent, but an admin will still review your payment. For help, contact ${MOMO_NUMBER}.`
+        : 'Form submitted successfully. An admin will review your payment. After confirmation, you will receive an email confirming your slot.');
       setRegistration(data.registration);
       setStep('complete');
     } catch (confirmError) {

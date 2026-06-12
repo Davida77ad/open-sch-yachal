@@ -94,6 +94,9 @@ export default function AdminDashboard() {
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
+  const [emailStatus, setEmailStatus] = useState(null);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [resendingEmailId, setResendingEmailId] = useState('');
 
   const filteredRegistrations = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -161,6 +164,7 @@ export default function AdminDashboard() {
       setRegistrations(loadedRegistrations);
       setStorage(data.storage || '');
       setCapabilities(data.capabilities || {});
+      setEmailStatus(data.email || null);
       setHasLoaded(true);
       window.sessionStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
       const storageLabel = data.storage === 'file' ? 'local file storage' : data.storage === 'mongo' ? 'MongoDB' : 'storage';
@@ -207,6 +211,52 @@ export default function AdminDashboard() {
     setStatusFilter('all');
     setPaymentFilter('all');
     setSortBy('newest');
+  };
+
+  const testEmailNotifications = async () => {
+    setTestingEmail(true);
+    setError('');
+    setMessage('');
+    try {
+      const response = await requestApi('/api/admin/email-test', {
+        method: 'POST',
+        headers: { 'x-admin-token': token.trim() },
+      });
+      const data = await readJsonResponse(response);
+      setEmailStatus(data.email || null);
+      if (!response.ok) {
+        setError(data.message || 'Email test failed.');
+        return;
+      }
+      setMessage(data.message || 'Test email sent to both administrators.');
+    } catch (testError) {
+      setError(testError.message || 'Unable to test email notifications.');
+    } finally {
+      setTestingEmail(false);
+    }
+  };
+
+  const resendRegistrationEmails = async (registration) => {
+    setResendingEmailId(registration._id);
+    setError('');
+    setMessage('');
+    try {
+      const response = await requestApi(`/api/admin/registrations/${registration._id}/resend-email`, {
+        method: 'POST',
+        headers: { 'x-admin-token': token.trim() },
+      });
+      const data = await readJsonResponse(response);
+      setEmailStatus(data.email || emailStatus);
+      if (!response.ok) {
+        setError(data.message || 'Unable to resend emails.');
+        return;
+      }
+      setMessage(data.message || `Emails resent for ${registration.fullName}.`);
+    } catch (resendError) {
+      setError(resendError.message || 'Unable to resend emails.');
+    } finally {
+      setResendingEmailId('');
+    }
   };
 
   const confirmPayment = async (registration) => {
@@ -462,6 +512,23 @@ export default function AdminDashboard() {
         </section>
       )}
 
+      {hasLoaded && capabilities.emailDiagnostics && (
+        <section className={`email-status-card ${emailStatus?.configured ? 'email-status-ready' : 'email-status-error'}`}>
+          <div>
+            <p className="email-status-label">Email notifications</p>
+            <h3>{emailStatus?.configured ? 'Email service is configured' : 'Email service needs attention'}</h3>
+            <p>
+              Admin recipients: {emailStatus?.recipients?.join(', ') || 'Not available'}
+            </p>
+            {emailStatus?.lastSuccessAt && <p>Last successful email: {formatSubmittedDate(emailStatus.lastSuccessAt)}</p>}
+            {emailStatus?.lastError && <p className="email-error-text">Last error: {emailStatus.lastError}</p>}
+          </div>
+          <button className="secondary-button" type="button" onClick={testEmailNotifications} disabled={testingEmail}>
+            {testingEmail ? 'Sending test email...' : 'Send test email to admins'}
+          </button>
+        </section>
+      )}
+
       {hasLoaded && registrations.length > 0 && (
         <div className="results-summary" role="status">
           Showing <strong>{filteredRegistrations.length}</strong> matching registration{filteredRegistrations.length === 1 ? '' : 's'}.
@@ -598,6 +665,16 @@ export default function AdminDashboard() {
                     )}
                     {capabilities.updateRegistration && (
                       <button className="secondary-button" type="button" onClick={() => startEdit(item)}>Edit details</button>
+                    )}
+                    {capabilities.resendEmails && (
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => resendRegistrationEmails(item)}
+                        disabled={resendingEmailId === item._id}
+                      >
+                        {resendingEmailId === item._id ? 'Resending emails...' : 'Resend emails'}
+                      </button>
                     )}
                     {capabilities.deleteRegistration && (
                       <button

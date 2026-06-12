@@ -59,6 +59,18 @@ function formatStatus(status) {
   return status;
 }
 
+function formatPaymentMethod(paymentMethod) {
+  return paymentMethod === 'momo' ? 'Mobile Money (Momo)' : 'Cash payment';
+}
+
+function formatSubmittedDate(value) {
+  if (!value) return 'Date not available';
+  return new Intl.DateTimeFormat('en-GH', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
 export default function AdminDashboard() {
   const [token, setToken] = useState(() => window.sessionStorage.getItem(ADMIN_TOKEN_KEY) || '');
   const [registrations, setRegistrations] = useState([]);
@@ -325,106 +337,145 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Church</th>
-              <th>Role</th>
-              <th>Payment</th>
-              <th>Status</th>
-              <th>Reference</th>
-              <th>Transaction</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {hasLoaded && !loading && registrations.length === 0 && (
-              <tr>
-                <td className="empty-table" colSpan="10">No registrations loaded from this data source.</td>
-              </tr>
-            )}
-            {registrations.map((item) => (
-              <tr key={item._id}>
-                <td>
-                  {editingId === item._id ? (
-                    <input value={editForm.fullName} onChange={(event) => updateEditField('fullName', event.target.value)} />
-                  ) : item.fullName}
-                </td>
-                <td>
-                  {editingId === item._id ? (
-                    <input type="email" value={editForm.email} onChange={(event) => updateEditField('email', event.target.value)} />
-                  ) : item.email}
-                </td>
-                <td>
-                  {editingId === item._id ? (
-                    <input value={editForm.phone} onChange={(event) => updateEditField('phone', event.target.value)} />
-                  ) : item.phone}
-                </td>
-                <td>
-                  {editingId === item._id ? (
-                    <input value={editForm.church} onChange={(event) => updateEditField('church', event.target.value)} />
-                  ) : (item.church || '-')}
-                </td>
-                <td>
-                  {editingId === item._id ? (
-                    <select value={editForm.churchRole} onChange={(event) => updateEditField('churchRole', event.target.value)}>
-                      <option value="Pastor">Pastor</option>
-                      <option value="Church worker">Church worker</option>
-                      <option value="Leader">Leader</option>
-                      <option value="Member">Member</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  ) : (item.churchRole || '-')}
-                </td>
-                <td>{item.paymentMethod}</td>
-                <td>
-                  <span className={`status-pill ${item.status.includes('paid') ? 'status-paid' : 'status-awaiting'}`}>
-                    {formatStatus(item.status)}
-                  </span>
-                </td>
-                <td>{item.momoReference || '-'}</td>
-                <td>{item.momoTransactionId || '-'}</td>
-                <td>
-                  <div className="table-actions">
-                    {capabilities.updateRegistration && editingId === item._id ? (
-                      <>
-                        <button className="action-button" type="button" onClick={saveEdit} disabled={loading}>Save</button>
-                        <button className="secondary-button" type="button" onClick={cancelEdit} disabled={loading}>Cancel</button>
-                      </>
-                    ) : capabilities.updateRegistration ? (
-                      <button className="secondary-button" type="button" onClick={() => startEdit(item)}>Edit</button>
-                    ) : null}
-                    {capabilities.confirmPayment && (item.status === 'momo-review-pending' || item.status === 'cash-pending') && editingId !== item._id && (
+      {hasLoaded && !loading && registrations.length === 0 && (
+        <div className="empty-registrations">
+          <h3>No registrations yet</h3>
+          <p>New registrations will appear here after a form is submitted.</p>
+        </div>
+      )}
+
+      <div className="registration-grid">
+        {registrations.map((item, index) => {
+          const isEditing = editingId === item._id;
+          const isPaid = item.status.includes('paid');
+          const canConfirm = capabilities.confirmPayment
+            && (item.status === 'momo-review-pending' || item.status === 'cash-pending');
+
+          return (
+            <article className={`registration-card ${isPaid ? 'registration-card-paid' : 'registration-card-pending'}`} key={item._id}>
+              <header className="registration-card-header">
+                <div>
+                  <p className="registration-number">Registration {index + 1}</p>
+                  <h3>{item.fullName}</h3>
+                  <p className="submitted-date">Submitted {formatSubmittedDate(item.createdAt)}</p>
+                </div>
+                <span className={`status-pill ${isPaid ? 'status-paid' : 'status-awaiting'}`}>
+                  {formatStatus(item.status)}
+                </span>
+              </header>
+
+              {isEditing ? (
+                <div className="registration-edit-form">
+                  <div className="edit-heading">
+                    <h4>Edit registration details</h4>
+                    <p>Change the information below, then press Save changes.</p>
+                  </div>
+                  <div className="form-grid two-col">
+                    <div>
+                      <label htmlFor={`fullName-${item._id}`}>Full name</label>
+                      <input id={`fullName-${item._id}`} value={editForm.fullName} onChange={(event) => updateEditField('fullName', event.target.value)} />
+                    </div>
+                    <div>
+                      <label htmlFor={`email-${item._id}`}>Email address</label>
+                      <input id={`email-${item._id}`} type="email" value={editForm.email} onChange={(event) => updateEditField('email', event.target.value)} />
+                    </div>
+                    <div>
+                      <label htmlFor={`phone-${item._id}`}>Phone number</label>
+                      <input id={`phone-${item._id}`} value={editForm.phone} onChange={(event) => updateEditField('phone', event.target.value)} />
+                    </div>
+                    <div>
+                      <label htmlFor={`country-${item._id}`}>Country</label>
+                      <input id={`country-${item._id}`} value={editForm.country} onChange={(event) => updateEditField('country', event.target.value)} />
+                    </div>
+                    <div>
+                      <label htmlFor={`church-${item._id}`}>Church</label>
+                      <input id={`church-${item._id}`} value={editForm.church} onChange={(event) => updateEditField('church', event.target.value)} />
+                    </div>
+                    <div>
+                      <label htmlFor={`churchRole-${item._id}`}>Church role</label>
+                      <select id={`churchRole-${item._id}`} value={editForm.churchRole} onChange={(event) => updateEditField('churchRole', event.target.value)}>
+                        <option value="Pastor">Pastor</option>
+                        <option value="Church worker">Church worker</option>
+                        <option value="Leader">Leader</option>
+                        <option value="Member">Member</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="registration-card-actions">
+                    <button className="action-button" type="button" onClick={saveEdit} disabled={loading}>
+                      {loading ? 'Saving changes...' : 'Save changes'}
+                    </button>
+                    <button className="secondary-button" type="button" onClick={cancelEdit} disabled={loading}>Cancel editing</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="registration-details" aria-label={`${item.fullName}'s registration details`}>
+                    <div className="registration-detail">
+                      <span>Email address</span>
+                      <strong>{item.email}</strong>
+                    </div>
+                    <div className="registration-detail">
+                      <span>Phone number</span>
+                      <strong>{item.phone}</strong>
+                    </div>
+                    <div className="registration-detail">
+                      <span>Country</span>
+                      <strong>{item.country || 'Ghana'}</strong>
+                    </div>
+                    <div className="registration-detail">
+                      <span>Church</span>
+                      <strong>{item.church || 'Not provided'}</strong>
+                    </div>
+                    <div className="registration-detail">
+                      <span>Church role</span>
+                      <strong>{item.churchRole || 'Not provided'}</strong>
+                    </div>
+                    <div className="registration-detail">
+                      <span>Payment method</span>
+                      <strong>{formatPaymentMethod(item.paymentMethod)}</strong>
+                    </div>
+                    <div className="registration-detail">
+                      <span>Momo reference</span>
+                      <strong>{item.momoReference || 'Not applicable'}</strong>
+                    </div>
+                    <div className="registration-detail">
+                      <span>Transaction ID</span>
+                      <strong>{item.momoTransactionId || 'Not submitted yet'}</strong>
+                    </div>
+                  </div>
+
+                  <div className="registration-card-actions">
+                    {canConfirm && (
                       <button
-                        className="action-button"
+                        className="action-button confirm-payment-button"
                         type="button"
                         onClick={() => confirmPayment(item)}
                         disabled={confirmingId === item._id}
                       >
-                        {confirmingId === item._id ? 'Confirming...' : 'Confirm payment'}
+                        {confirmingId === item._id ? 'Confirming payment...' : 'Confirm payment and give slot'}
                       </button>
                     )}
-                    {capabilities.deleteRegistration && editingId !== item._id && (
+                    {capabilities.updateRegistration && (
+                      <button className="secondary-button" type="button" onClick={() => startEdit(item)}>Edit details</button>
+                    )}
+                    {capabilities.deleteRegistration && (
                       <button
-                        className="secondary-button"
+                        className="danger-button"
                         type="button"
                         onClick={() => deleteRegistration(item)}
                         disabled={deletingId === item._id}
                       >
-                        {deletingId === item._id ? 'Deleting...' : 'Delete'}
+                        {deletingId === item._id ? 'Deleting registration...' : 'Delete registration'}
                       </button>
                     )}
-                    {!capabilities.updateRegistration && !capabilities.confirmPayment && !capabilities.deleteRegistration && '-'}
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </>
+              )}
+            </article>
+          );
+        })}
       </div>
     </div>
   );

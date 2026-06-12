@@ -143,7 +143,7 @@ export default function RegistrationForm() {
       </div>
       <div className="note">
         <p>
-          Momo amount: <strong>GHS {amountGhs}</strong> using the fixed rate <strong>1 USD = GHS {USD_TO_GHS.toFixed(2)}</strong>. Please send exactly this amount to {MOMO_NUMBER}.
+          Momo amount: <strong>GHS {amountGhs}</strong> using the current rate <strong>1 USD = GHS {USD_TO_GHS.toFixed(2)}</strong>. Kindly make payment to {MOMO_NUMBER} secure your spot and then submit the momo transaction ID in the form after payment. If you choose cash, please pay in person at the Ghana center when you arrive.
         </p>
       </div>
 

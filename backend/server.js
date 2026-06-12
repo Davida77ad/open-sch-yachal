@@ -5,7 +5,11 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const registrationRoutes = require('./routes/registrations');
 const adminRoutes = require('./routes/admin');
-const { enableFileFallback, getStoreMode } = require('./services/registrationStore');
+const {
+  enableFileFallback,
+  getStoreMode,
+  syncLocalRegistrationsToMongo,
+} = require('./services/registrationStore');
 
 dotenv.config();
 
@@ -58,12 +62,6 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 4001;
 
-// Start server immediately
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
-
-// Connect to MongoDB
 const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/open-school-yachal';
 const defaultMongoTimeoutMs = process.env.NODE_ENV === 'production' ? 30000 : 5000;
 const mongoTimeoutMs = Number(process.env.MONGODB_TIMEOUT_MS || defaultMongoTimeoutMs);
@@ -74,17 +72,36 @@ if (fallbackPath) {
   console.warn(`Local file registration store ready at ${fallbackPath}`);
 }
 
-mongoose
-  .connect(mongoUri, { serverSelectionTimeoutMS: mongoTimeoutMs })
-  .then(() => {
+async function syncFallbackRecords() {
+  const result = await syncLocalRegistrationsToMongo();
+  if (result.imported > 0 || result.updated > 0) {
+    console.log(`Synced local registrations to MongoDB: ${result.imported} imported, ${result.updated} updated.`);
+  }
+}
+
+mongoose.connection.on('reconnected', () => {
+  syncFallbackRecords().catch((error) => {
+    console.error('Unable to sync fallback registrations after MongoDB reconnect:', error.message);
+  });
+});
+
+async function startServer() {
+  try {
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: mongoTimeoutMs });
     console.log('Connected to MongoDB');
-  })
-  .catch((error) => {
+    await syncFallbackRecords();
+  } catch (error) {
     console.error('MongoDB connection failed:', error.message);
     if (fallbackPath) {
       console.warn(`Continuing with local file registration store at ${fallbackPath}`);
-      return;
+    } else {
+      console.warn('Server running but database unavailable. Requests will fail gracefully.');
     }
+  }
 
-    console.warn('Server running but database unavailable. Requests will fail gracefully.');
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
   });
+}
+
+startServer();

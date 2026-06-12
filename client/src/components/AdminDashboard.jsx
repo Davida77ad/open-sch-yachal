@@ -17,11 +17,13 @@ export default function AdminDashboard() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [storage, setStorage] = useState('');
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const loadRegistrations = async () => {
     setLoading(true);
     setError('');
     setMessage('');
+    setHasLoaded(false);
 
     try {
       const response = await fetch(`${API_BASE}/api/admin/registrations`, {
@@ -36,6 +38,7 @@ export default function AdminDashboard() {
 
       setRegistrations(data.registrations || []);
       setStorage(data.storage || '');
+      setHasLoaded(true);
       const storageLabel = data.storage === 'file' ? 'local file storage' : data.storage === 'mongo' ? 'MongoDB' : 'storage';
       setMessage(`Loaded ${data.registrations.length} registrations from ${storageLabel}.`);
     } catch (loadError) {
@@ -123,7 +126,7 @@ export default function AdminDashboard() {
             </tr>
           </thead>
           <tbody>
-            {!loading && registrations.length === 0 && (
+            {hasLoaded && !loading && registrations.length === 0 && (
               <tr>
                 <td className="empty-table" colSpan="9">No registrations loaded from this data source.</td>
               </tr>

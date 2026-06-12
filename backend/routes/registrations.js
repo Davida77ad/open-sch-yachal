@@ -1,5 +1,6 @@
 const express = require('express');
 const registrationStore = require('../services/registrationStore');
+const { sendRegistrationNotification } = require('../services/emailNotifier');
 const { generateOrReuseReference } = require('../utils/reference');
 
 const router = express.Router();
@@ -66,6 +67,10 @@ router.post('/', async (req, res) => {
       paymentMethod,
       momoReference,
       status,
+    });
+
+    sendRegistrationNotification(registration).catch((error) => {
+      console.error('Unable to send registration notification email:', error.message);
     });
 
     res.status(201).json({ message: 'Registration created.', registration });

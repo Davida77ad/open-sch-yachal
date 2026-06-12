@@ -21,7 +21,16 @@
    MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>/<database>?retryWrites=true&w=majority
    CLIENT_URL=https://register.yachalhousegh.com,https://open-sch-yachal.pages.dev
    ADMIN_TOKEN=<generate-a-long-random-token>
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=465
+   SMTP_SECURE=true
+   SMTP_USER=<gmail-address-used-to-send-notifications>
+   SMTP_PASS=<gmail-app-password>
+   EMAIL_FROM=<gmail-address-used-to-send-notifications>
+   REGISTRATION_NOTIFICATION_EMAILS=maamekrakuezoom@gmail.com,blackbird77ad@gmail.com
    ```
+
+   For Gmail, `SMTP_PASS` must be a Google App Password, not the normal account password. Enable 2-Step Verification on the sending account, create an App Password, and add it only in Render and the local ignored `backend/.env` file.
 
 4. **Deploy**
    - Click "Create Web Service"

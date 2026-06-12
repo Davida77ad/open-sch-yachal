@@ -9,6 +9,7 @@ const localStorePath =
   path.join(__dirname, '..', 'data', 'registrations.local.json');
 
 let fileFallbackEnabled = false;
+let syncPromise = null;
 
 function enableFileFallback() {
   fileFallbackEnabled = true;
@@ -54,6 +55,32 @@ async function writeLocalRegistrations(registrations) {
   await fs.writeFile(localStorePath, `${JSON.stringify(registrations, null, 2)}\n`);
 }
 
+async function mirrorRegistrationLocally(registration) {
+  if (!fileFallbackEnabled) return;
+
+  try {
+    const registrations = await readLocalRegistrations();
+    const plain = registration.toObject ? registration.toObject() : registration;
+    const mirrored = {
+      ...plain,
+      _id: String(plain._id),
+      createdAt: new Date(plain.createdAt).toISOString(),
+      updatedAt: new Date(plain.updatedAt).toISOString(),
+    };
+    const index = registrations.findIndex((item) => item.email === mirrored.email);
+
+    if (index === -1) {
+      registrations.push(mirrored);
+    } else {
+      registrations[index] = mirrored;
+    }
+
+    await writeLocalRegistrations(registrations);
+  } catch (error) {
+    console.error(`Unable to update local registration mirror for ${registration.email}:`, error.message);
+  }
+}
+
 function toLocalRegistration(data) {
   const now = new Date().toISOString();
 
@@ -72,6 +99,22 @@ function toLocalRegistration(data) {
     status: data.status,
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+function toMongoRegistrationData(item) {
+  return {
+    fullName: item.fullName,
+    email: item.email,
+    phone: item.phone,
+    country: item.country || 'Ghana',
+    church: item.church,
+    churchRole: item.churchRole,
+    attendanceType: item.attendanceType || 'ghana-center',
+    paymentMethod: item.paymentMethod,
+    momoReference: item.momoReference,
+    momoTransactionId: item.momoTransactionId,
+    status: item.status,
   };
 }
 
@@ -108,7 +151,9 @@ async function exists(query) {
 async function create(data) {
   const mode = getStoreMode();
   if (mode === 'mongo') {
-    return Registration.create(data);
+    const registration = await Registration.create(data);
+    await mirrorRegistrationLocally(registration);
+    return registration;
   }
   if (mode === 'unavailable') {
     throw createUnavailableError();
@@ -157,6 +202,7 @@ async function confirmMomoPayment({ email, momoReference, momoTransactionId }) {
     registration.momoTransactionId = momoTransactionId.trim();
     registration.status = 'momo-paid';
     await registration.save();
+    await mirrorRegistrationLocally(registration);
     return registration;
   }
   if (mode === 'unavailable') {
@@ -180,6 +226,55 @@ async function confirmMomoPayment({ email, momoReference, momoTransactionId }) {
   return registrations[index];
 }
 
+async function runLocalSync() {
+  if (mongoose.connection.readyState !== 1) {
+    return { imported: 0, updated: 0, skipped: 0 };
+  }
+
+  const registrations = await readLocalRegistrations();
+  const result = { imported: 0, updated: 0, skipped: 0 };
+
+  for (const item of registrations) {
+    try {
+      const existing = await Registration.findOne({ email: item.email });
+      if (!existing) {
+        await Registration.create({
+          ...toMongoRegistrationData(item),
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+        });
+        result.imported += 1;
+        continue;
+      }
+
+      const localUpdatedAt = new Date(item.updatedAt || item.createdAt || 0);
+      const mongoUpdatedAt = new Date(existing.updatedAt || existing.createdAt || 0);
+      if (localUpdatedAt > mongoUpdatedAt) {
+        Object.assign(existing, toMongoRegistrationData(item));
+        await existing.save();
+        result.updated += 1;
+      } else {
+        result.skipped += 1;
+      }
+    } catch (error) {
+      result.skipped += 1;
+      console.error(`Unable to sync local registration ${item.email}:`, error.message);
+    }
+  }
+
+  return result;
+}
+
+async function syncLocalRegistrationsToMongo() {
+  if (!syncPromise) {
+    syncPromise = runLocalSync().finally(() => {
+      syncPromise = null;
+    });
+  }
+
+  return syncPromise;
+}
+
 module.exports = {
   create,
   enableFileFallback,
@@ -188,4 +283,5 @@ module.exports = {
   findOne,
   getStoreMode,
   confirmMomoPayment,
+  syncLocalRegistrationsToMongo,
 };

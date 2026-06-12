@@ -1,7 +1,11 @@
 const express = require('express');
-const Registration = require('../models/Registration');
+const registrationStore = require('../services/registrationStore');
 
 const router = express.Router();
+
+function formatDate(value) {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
 
 router.use((req, res, next) => {
   const adminToken = req.header('x-admin-token');
@@ -13,9 +17,12 @@ router.use((req, res, next) => {
 
 router.get('/registrations', async (req, res) => {
   try {
-    const registrations = await Registration.find().sort({ createdAt: -1 });
+    const registrations = await registrationStore.findAllNewestFirst();
     res.json({ registrations });
   } catch (error) {
+    if (error.statusCode === 503) {
+      return res.status(503).json({ message: error.message });
+    }
     console.error(error);
     res.status(500).json({ message: 'Unable to load registrations.' });
   }
@@ -23,7 +30,7 @@ router.get('/registrations', async (req, res) => {
 
 router.get('/export', async (req, res) => {
   try {
-    const registrations = await Registration.find().sort({ createdAt: -1 });
+    const registrations = await registrationStore.findAllNewestFirst();
     const header = [
       'Full Name',
       'Email',
@@ -54,7 +61,7 @@ router.get('/export', async (req, res) => {
         item.momoReference || '',
         item.momoTransactionId || '',
         item.status,
-        item.createdAt.toISOString(),
+        formatDate(item.createdAt),
       ]
         .map((value) => `"${String(value).replace(/"/g, '""')}"`)
         .join(',');
@@ -65,6 +72,9 @@ router.get('/export', async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename="registrations.csv"');
     res.send(csvRows.join('\n'));
   } catch (error) {
+    if (error.statusCode === 503) {
+      return res.status(503).json({ message: error.message });
+    }
     console.error(error);
     res.status(500).json({ message: 'Unable to export registrations.' });
   }

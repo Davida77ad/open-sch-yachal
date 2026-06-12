@@ -22,8 +22,9 @@ export default function RegistrationForm() {
   const [registration, setRegistration] = useState(null);
   const [transactionId, setTransactionId] = useState('');
   const [confirmation, setConfirmation] = useState('');
+  const [step, setStep] = useState('form');
 
-  const isMomo = form.paymentMethod === 'momo';
+  const isMomo = registration ? registration.paymentMethod === 'momo' : form.paymentMethod === 'momo';
   const amountGhs = (USD_AMOUNT * USD_TO_GHS).toFixed(2);
 
   const handleChange = (event) => {
@@ -71,8 +72,10 @@ export default function RegistrationForm() {
       setRegistration(data.registration);
       if (data.registration.paymentMethod === 'momo') {
         setMessage('Your momo payment reference has been generated below. Please copy it and use it as the momo reference when you pay.');
+        setStep('payment');
       } else {
         setMessage('Registration saved. Please pay cash in person at the Ghana center when you arrive.');
+        setStep('complete');
       }
     } catch (submitError) {
       setError('Unable to connect to the server.');
@@ -111,6 +114,7 @@ export default function RegistrationForm() {
 
       setConfirmation('Payment confirmed. Your registration is now complete.');
       setRegistration(data.registration);
+      setStep('complete');
     } catch (confirmError) {
       setError('Unable to connect to the server.');
       console.error(confirmError);
@@ -139,7 +143,7 @@ export default function RegistrationForm() {
       </div>
       <div className="note">
         <p>
-          Momo amount: <strong>₵{amountGhs}</strong> using the fixed rate <strong>1 USD = ₵{USD_TO_GHS.toFixed(2)}</strong>. Please send exactly this amount to {MOMO_NUMBER}.
+          Momo amount: <strong>GHS {amountGhs}</strong> using the fixed rate <strong>1 USD = GHS {USD_TO_GHS.toFixed(2)}</strong>. Please send exactly this amount to {MOMO_NUMBER}.
         </p>
       </div>
 
@@ -147,70 +151,72 @@ export default function RegistrationForm() {
       {message && <div className="note">{message}</div>}
       {confirmation && <div className="success">{confirmation}</div>}
 
-      <form onSubmit={handleSubmit} className="form-grid two-col">
-        <div>
-          <label htmlFor="fullName">Full Name</label>
-          <input id="fullName" name="fullName" value={form.fullName} onChange={handleChange} required />
-        </div>
-        <div>
-          <label htmlFor="email">Email Address</label>
-          <input id="email" name="email" type="email" value={form.email} onChange={handleChange} required />
-        </div>
-        <div>
-          <label htmlFor="phone">Phone Number</label>
-          <input id="phone" name="phone" type="tel" value={form.phone} onChange={handleChange} required />
-        </div>
-        <div>
-          <label htmlFor="country">Country</label>
-          <input id="country" name="country" value={form.country} readOnly />
-        </div>
-        <div>
-          <label htmlFor="churchSelection">Church</label>
-          <select id="churchSelection" name="churchSelection" value={form.churchSelection} onChange={handleChange} required>
-            <option value="yachal-house">Yachal House</option>
-            <option value="other">Other church in Ghana</option>
-          </select>
-        </div>
-        {form.churchSelection === 'other' && (
-          <div className="full-width">
-            <label htmlFor="otherChurchDetails">Other church name and location in Ghana</label>
-            <input
-              id="otherChurchDetails"
-              name="otherChurchDetails"
-              value={form.otherChurchDetails}
-              onChange={handleChange}
-              placeholder="e.g. Calvary Chapel, Tema"
-              required
-            />
+      {step === 'form' && (
+        <form onSubmit={handleSubmit} className="form-grid two-col">
+          <div>
+            <label htmlFor="fullName">Full Name</label>
+            <input id="fullName" name="fullName" value={form.fullName} onChange={handleChange} required />
           </div>
-        )}
-        <div>
-          <label htmlFor="churchRole">Your role in the church</label>
-          <select id="churchRole" name="churchRole" value={form.churchRole} onChange={handleChange} required>
-            <option value="Pastor">Pastor</option>
-            <option value="Church worker">Church worker</option>
-            <option value="Leader">Leader</option>
-            <option value="Member">Member</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="paymentMethod">Payment Method</label>
-          <select id="paymentMethod" name="paymentMethod" value={form.paymentMethod} onChange={handleChange} required>
-            <option value="momo">Momo</option>
-            <option value="cash">Cash (in person)</option>
-          </select>
-        </div>
+          <div>
+            <label htmlFor="email">Email Address</label>
+            <input id="email" name="email" type="email" value={form.email} onChange={handleChange} required />
+          </div>
+          <div>
+            <label htmlFor="phone">Phone Number</label>
+            <input id="phone" name="phone" type="tel" value={form.phone} onChange={handleChange} required />
+          </div>
+          <div>
+            <label htmlFor="country">Country</label>
+            <input id="country" name="country" value={form.country} readOnly />
+          </div>
+          <div>
+            <label htmlFor="churchSelection">Church</label>
+            <select id="churchSelection" name="churchSelection" value={form.churchSelection} onChange={handleChange} required>
+              <option value="yachal-house">Yachal House</option>
+              <option value="other">Other church in Ghana</option>
+            </select>
+          </div>
+          {form.churchSelection === 'other' && (
+            <div className="full-width">
+              <label htmlFor="otherChurchDetails">Other church name and location in Ghana</label>
+              <input
+                id="otherChurchDetails"
+                name="otherChurchDetails"
+                value={form.otherChurchDetails}
+                onChange={handleChange}
+                placeholder="e.g. Calvary Chapel, Tema"
+                required
+              />
+            </div>
+          )}
+          <div>
+            <label htmlFor="churchRole">Your role in the church</label>
+            <select id="churchRole" name="churchRole" value={form.churchRole} onChange={handleChange} required>
+              <option value="Pastor">Pastor</option>
+              <option value="Church worker">Church worker</option>
+              <option value="Leader">Leader</option>
+              <option value="Member">Member</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="paymentMethod">Payment Method</label>
+            <select id="paymentMethod" name="paymentMethod" value={form.paymentMethod} onChange={handleChange} required>
+              <option value="momo">Momo</option>
+              <option value="cash">Cash (in person)</option>
+            </select>
+          </div>
 
-        <div className="actions full-width">
-          <button className="action-button" type="submit" disabled={loading}>
-            {loading ? 'Saving...' : 'Save and continue'}
-          </button>
-        </div>
-      </form>
+          <div className="actions full-width">
+            <button className="action-button" type="submit" disabled={loading}>
+              {loading ? 'Saving...' : 'Save and continue'}
+            </button>
+          </div>
+        </form>
+      )}
 
-      {isMomo && registration?.momoReference && (
-        <div className="panel">
+      {step === 'payment' && isMomo && registration?.momoReference && (
+        <div className="next-step">
           <h2>Momo payment reference</h2>
           <p>Use this reference when sending momo payment to {MOMO_NUMBER}.</p>
           <div className="note">
@@ -237,6 +243,20 @@ export default function RegistrationForm() {
             <button className="action-button" type="button" onClick={handleConfirm} disabled={loading}>
               {loading ? 'Confirming...' : 'Submit transaction ID'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {step === 'complete' && registration && (
+        <div className="next-step">
+          <h2>Registration saved</h2>
+          <p>
+            Thank you, {registration.fullName}. Your registration for the Ghana center at Yachal House, Ridge Accra has been saved.
+          </p>
+          <div className="note">
+            {registration.paymentMethod === 'cash'
+              ? 'Please pay cash in person at the Ghana center when you arrive.'
+              : 'Your momo payment has been submitted and marked as paid.'}
           </div>
         </div>
       )}

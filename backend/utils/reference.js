@@ -1,8 +1,8 @@
-const Registration = require('../models/Registration');
+const registrationStore = require('../services/registrationStore');
 
 async function generateOrReuseReference(email) {
   const normalizedEmail = String(email).trim().toLowerCase();
-  const existing = await Registration.findOne({ email: normalizedEmail });
+  const existing = await registrationStore.findOne({ email: normalizedEmail });
   if (existing?.momoReference) {
     return existing.momoReference;
   }
@@ -13,7 +13,7 @@ async function generateOrReuseReference(email) {
   do {
     code = String(Math.floor(100 + Math.random() * 900));
     reference = `OpenSch-Yachal${code}`;
-    const exists = await Registration.exists({ momoReference: reference });
+    const exists = await registrationStore.exists({ momoReference: reference });
     if (!exists) break;
     tries += 1;
   } while (tries < 20);

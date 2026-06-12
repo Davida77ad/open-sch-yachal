@@ -255,7 +255,8 @@ textarea {
 }
 
 .note,
-.alert {
+.alert,
+.success {
   border-left: 4px solid #2563eb;
   background: #eff6ff;
   padding: clamp(12px, 3vw, 16px);
@@ -265,7 +266,8 @@ textarea {
 }
 
 .note p,
-.alert p {
+.alert p,
+.success p {
   margin: 0;
 }
 
@@ -277,6 +279,12 @@ textarea {
 .success {
   border-left-color: #16a34a;
   background: #dcfce7;
+}
+
+.next-step {
+  margin-top: clamp(16px, 4vw, 24px);
+  border-top: 1px solid #e2e8f0;
+  padding-top: clamp(16px, 4vw, 24px);
 }
 
 .table-wrapper {

@@ -1,8 +1,20 @@
 const express = require('express');
-const Registration = require('../models/Registration');
+const registrationStore = require('../services/registrationStore');
 const { generateOrReuseReference } = require('../utils/reference');
 
 const router = express.Router();
+
+function sendStorageError(res, error, fallbackMessage) {
+  if (error.statusCode === 503) {
+    return res.status(503).json({ message: error.message });
+  }
+  if (error.code === 11000) {
+    return res.status(409).json({ message: 'Email or momo reference already exists.' });
+  }
+
+  console.error(error);
+  return res.status(500).json({ message: fallbackMessage });
+}
 
 router.post('/', async (req, res) => {
   try {
@@ -22,7 +34,7 @@ router.post('/', async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-    const existing = await Registration.findOne({ email: normalizedEmail });
+    const existing = await registrationStore.findOne({ email: normalizedEmail });
 
     if (existing) {
       if (existing.paymentMethod === 'momo' && existing.status === 'awaiting-momo-payment') {
@@ -43,7 +55,7 @@ router.post('/', async (req, res) => {
       status = 'cash-pending';
     }
 
-    const registration = await Registration.create({
+    const registration = await registrationStore.create({
       fullName,
       email: normalizedEmail,
       phone,
@@ -58,11 +70,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ message: 'Registration created.', registration });
   } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({ message: 'Email or momo reference already exists.' });
-    }
-    console.error(error);
-    res.status(500).json({ message: 'Unable to save registration.' });
+    sendStorageError(res, error, 'Unable to save registration.');
   }
 });
 
@@ -74,19 +82,18 @@ router.post('/confirm', async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-    const registration = await Registration.findOne({ email: normalizedEmail, momoReference });
+    const registration = await registrationStore.confirmMomoPayment({
+      email: normalizedEmail,
+      momoReference,
+      momoTransactionId,
+    });
     if (!registration) {
       return res.status(404).json({ message: 'Could not find matching registration.' });
     }
 
-    registration.momoTransactionId = momoTransactionId.trim();
-    registration.status = 'momo-paid';
-    await registration.save();
-
     res.status(200).json({ message: 'Payment confirmed and registration completed.', registration });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Unable to confirm momo payment.' });
+    sendStorageError(res, error, 'Unable to confirm momo payment.');
   }
 });
 
